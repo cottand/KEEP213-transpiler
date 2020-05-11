@@ -511,9 +511,9 @@ whenEntry
     ;
 
 whenCondition
-    : expression
-    | rangeTest
-    | typeTest
+    : expression # Expr
+    | rangeTest #Range
+    | typeTest #IsCheck
     ;
 
 rangeTest
@@ -529,13 +529,13 @@ typeTest  // aka a pattern!
 guardedMatch : match guard? ;
 
 match
-    : type
-    | type? LPAREN destructuredTupleTypeTest RPAREN
+    : type #InstanceOf
+    | type? LPAREN destructuredTupleTypeTest RPAREN #Destructure
     ;
 
 destructuredTupleTypeTest
-    : match
-    | match (NL* COMMA match)*
+//    : match
+    : match (NL* COMMA match)*
     ;
 
 guard
