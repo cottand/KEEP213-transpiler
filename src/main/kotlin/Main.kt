@@ -1,3 +1,4 @@
+import KotlinParser.WhenExpressionContext
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
@@ -16,6 +17,10 @@ fun main(args: Array<String>) {
 }
 
 class Visitor : KotlinParserBaseVisitor<Unit>() {
-  override fun visit
+  val replacings = emptyMap<String, String>()
+  override fun visitWhenExpression(ctx: WhenExpressionContext?) {
+    ctx?:return
+
+  }
 
 }

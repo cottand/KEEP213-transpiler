@@ -520,8 +520,26 @@ rangeTest
     : inOperator NL* expression
     ;
 
-typeTest
-    : isOperator NL* type
+/* Modified typeTest in order to pattern match.
+*/
+typeTest  // aka a pattern!
+    : isOperator guardedMatch
+    ;
+
+guardedMatch : match guard? ;
+
+match
+    : type
+    | type? LPAREN destructuredTupleTypeTest RPAREN
+    ;
+
+destructuredTupleTypeTest
+    : match
+    | match (NL* COMMA match)*
+    ;
+
+guard
+    : WHERE expression
     ;
 
 tryExpression
