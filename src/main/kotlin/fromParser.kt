@@ -36,5 +36,6 @@ private fun MatchContext.ast(): Match = when (this) {
     val ms = destructuredTupleTypeTest().match().map { it.ast() }
     Destructure(t, ms)
   }
+  is DefinitionContext -> Definition(this.identifier().text)
   else -> notReached()
 }

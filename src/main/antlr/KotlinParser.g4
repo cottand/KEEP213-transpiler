@@ -530,6 +530,7 @@ guardedMatch : match guard? ;
 
 match
     : type #InstanceOf
+    | identifier #Definition
     | type? LPAREN destructuredTupleTypeTest RPAREN #Destructure
     ;
 

@@ -5,8 +5,13 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
+fun Iterable<String>.joinLines() = joinToString(separator = "\n")
+
 fun main(args: Array<String>) {
   val filename = args[0]
+  require(filename.takeLast(4) == ".kts") {
+    "This tool can only transpile .kts scripts, sorry!"
+  }
   val input = File(filename)
   if (!(input.exists() && input.isFile)) {
     throw IllegalArgumentException("No such file $filename")
@@ -15,11 +20,20 @@ fun main(args: Array<String>) {
   val lexer = KotlinLexer(stream)
   val tokens = CommonTokenStream(lexer)
   val scriptTree = KotlinParser(tokens).script()
-  Visitor().visit(scriptTree)
+  val visitor = Visitor()
+  visitor.visit(scriptTree)
+  val newText = visitor.replacings.entries
+    // Go through entries and replace matches one by one on file
+    .fold(input.readText()) { text, (replaced, transpiled) ->
+      text.replace(replaced, transpiled)
+    }
+
+  val newFileName = filename.dropLast(4) + "_gen.kts"
+  File(newFileName).writeText(newText)
 }
 
 class Visitor : KotlinParserBaseVisitor<Unit>() {
-  val replacings = emptyMap<String, String>()
+  val replacings = mutableMapOf<String, String>()
   override fun visitWhenExpression(ctx: WhenExpressionContext?) {
     ctx ?: return
     val entries = ctx.whenEntry()
@@ -27,40 +41,22 @@ class Visitor : KotlinParserBaseVisitor<Unit>() {
     if (!entries.any { entry -> entry.whenCondition().any { it is TypeTestContext } })
       return
     val toBeReplaced = ctx.text
-    val ast = entries.map(WhenEntryContext::ast).map(Entry::makePredicate)
-    val (header, footer) = "(${ctx.expression().text}).let { $x -> \n" to "\n}"
-  }
-}
+    val lines = entries
+      .map(WhenEntryContext::ast)
+      .map { makePredicate(it).genWhenLine() }
+      .joinLines()
 
-val whenBody = "when {\n" to "\n}\n"
-const val x = "__x_"
-
-/**
- * [conditions]: list of predicates that need to pass
- * [extracted]: (extraction to ident), where extreaction is a chain of
- * `componentN()` calls and ident is the name the user gave the matched identifier.
- * [body]: is tge RHS body of the `when` entry
- */
-data class MatchResult(
-  val conditions: List<String>,
-  val extracted: Map<String, String>,
-  val body: Body
-) {
-
-  private fun genExtraced() = extracted.map { (chain, ident) ->
-    "val $ident = $x.$chain"
-  }.joinToString(separator = "\n")
-
-  fun genWhenLine(): String {
-    val conds =
-      conditions.joinToString(prefix = "(", separator = ") && (", postfix = ")")
-    val bodyTxt = """{
-      ${genExtraced()}
-      ${body.text}
+    val subjectExpression = ctx.expression().text
+    val transpiled = """
+      ($subjectExpression).let { $subject ->
+        when {
+          $lines
+        }
       }
     """.trimIndent()
-    return "$conds -> $bodyTxt"
+    replacings += (toBeReplaced to transpiled)
   }
 }
 
-fun Entry.makePredicate(): MatchResult = TODO()
+const val subject = "_x_dont_use_"
+
