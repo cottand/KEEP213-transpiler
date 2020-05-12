@@ -5,7 +5,6 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.File
 
-fun Iterable<String>.joinLines() = joinToString(separator = "\n")
 
 fun main(args: Array<String>) {
   val filename = args[0]
@@ -41,17 +40,22 @@ class Visitor : KotlinParserBaseVisitor<Unit>() {
     if (!entries.any { entry -> entry.whenCondition().any { it is TypeTestContext } })
       return
     val toBeReplaced = ctx.text
-    val lines = entries
+    val entriesAst = entries
       .map(WhenEntryContext::ast)
-      .map { makePredicate(it).genWhenLine() }
+    val lines = entriesAst.dropLast(1).asSequence()
+      .onEach { assert(it is CondEntry) { "`else` entry not the last entry!" } }
+      .map { it as CondEntry }
+      .map { makeMatchResult(it).genIfChain() }
       .joinLines()
+    val last = entriesAst.last().let { it as ElseEntry }
 
     val subjectExpression = ctx.expression().text
     val transpiled = """
       ($subjectExpression).let { $subject ->
-        when {
-          $lines
-        }
+      $lines
+      return@let {
+          ${last.bodyText}
+        }.invoke()
       }
     """.trimIndent()
     replacings += (toBeReplaced to transpiled)

@@ -3,9 +3,18 @@ import KotlinParser.*
 fun notReached(): Nothing = error("Not reached")
 
 fun WhenEntryContext.ast(): Entry {
+  if (ELSE() != null) {
+    val body = if (controlStructureBody().block() == null) {
+      controlStructureBody().expression().text
+    } else {
+      controlStructureBody().block().text
+    }
+    return ElseEntry(body)
+  }
   val conds = whenCondition().let {
-    if (it.isNullOrEmpty())
+    if (it.isNullOrEmpty()) {
       listOf<Nothing>()
+    }
     else
       it.map(WhenConditionContext::ast)
   }
@@ -15,7 +24,7 @@ fun WhenEntryContext.ast(): Entry {
     bodyCtx.expression() != null -> BodyExpr(bodyCtx.expression().text)
     else -> notReached()
   }
-  return Entry(conds, body)
+  return CondEntry(conds, body)
 }
 
 fun WhenConditionContext.ast(): Condition = when (this) {

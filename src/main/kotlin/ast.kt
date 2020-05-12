@@ -1,9 +1,16 @@
 
-data class Entry(val conditions: List<Condition>, val body: Body)
+sealed class Entry
+data class CondEntry(val conditions: List<Condition>, val body: Body) : Entry()
+// TODO differentiate block from expression
+data class ElseEntry(val bodyText: String) : Entry()
 sealed class Condition
 data class Expression(val text: String) : Condition()
 data class RangeTest(val text: String) : Condition()
 data class TypeTestIs(val match: Match, val guard: Guard?) : Condition()
+
+/**
+ * The text of an [ElseEntry] is not enclosed by curly braces
+ */
 
 sealed class Match
 data class TypeCheckOnly(val t: Type) : Match()
